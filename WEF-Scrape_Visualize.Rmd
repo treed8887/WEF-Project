@@ -1,0 +1,355 @@
+---
+title: "WEF-Scrape_Visualize"
+author: "Tyler Reed"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(error = TRUE)
+```
+
+In this activity, we will explore writing your own functions by scraping data from the web.
+The web is a great resource of information, especially with the ever increasing amount of data available on the web.
+Copying and pasting this information is time consuming and susceptible to many errors.
+Web scraping is a way to extract this information automatically and transform it into a structured data set.
+
+I showed you how to use a web API (application programming interface) which is when a website offers a set of structured requests (either JSON or XML files).
+In this activity we will use screen scraping in which we extract data from the source code of a website with an HTML parser (this could also be done with regular expression matching).
+
+Web scraping is not unique to R.
+Python, perl, and java are also efficient tools for this.
+However, this is a course in using R...
+
+## Task 2: Go go, SelectorGadget!
+
+
+![Inspector Gadget gif](https://media.giphy.com/media/z9bcWnpU1QnXG/giphy.gif)
+
+
+As we will see, most data on the web is available as HTML (hypertext markup language).
+And, although it is structured (hierarchical/tree based), HTML data is often not available in an analysis-ready format (i.e., tidy).
+
+A toy example of HTML to show tag pairs and tag attributes:
+
+```
+<html>
+  <head>
+    <title>This is a title</title>
+  </head>
+  <body>
+    <p align="center">Hello world!</p>
+  </body>
+</html>
+```
+
+`{rvest}` is a package by the tidyverse team that makes basic processing and manipulation of HTML data more straight forward.
+However, it is not loaded with the tidyverse so you will need to load it separately.
+
+```{r load packages}
+library(tidyverse)
+library(ggplot2)
+library(rvest)
+```
+
+
+The core functions that we will be using are:
+
+- `read_html`: reads HTML data from a URL or character string
+- `html_nodes`: selects specified nodes from the HTML document using CSS selectors
+- `html_table`: parses an HTML table into a data frame
+- `html_text`: extracts tag pairs' content
+- `html_name`: extracts tags' names.
+- `html_attrs`: extracts all of each tag's attributes
+- `html_attr`: extracts tags' attribute value by name
+
+Hadley offers a [vignette](https://cran.r-project.org/web/packages/rvest/vignettes/selectorgadget.html) for a handy tool browser add-in (SelectorGadget) that helps determine the minimal CSS for certain web page elements.
+However, you might be more comfortable inspecting (e.g., Ctrl + Shift + I) the HTML structure of a webpage.
+You are free to use either of these tools.
+
+Below are instructions to get started using SelectorGadget, but you are welcome to use the Inspect tool:
+
+1. Install SelectorGadget in your web browser,
+2. Go to IMDb's [Top 250 Movies](https://www.imdb.com/chart/top) page,
+3. Open SelectorGadget (a box will open in the bottom-right corner of your browser),
+4. Explore different page elements (e.g., a movie's title).
+  When you click on different items using SelectorGadget, they should highlight in green, generates a minimal CSS selector (e.g., `.titleColumn`), and highlight everything that is matched by that selector in yellow.
+5. Click on the green highlighted item to de-select it.
+6. You can also search for different elements.
+  Type `table` when you have nothing else selected (where it says "No valid path found.").
+7. Click or type to explore at least these elements:
+  - `titles`
+  - `years`
+  - `scores`
+
+What are the minimal CSS selectors for the following elements: a movie's title, years, and scores.
+
+#### Tyler Reed:
+
+Title: a
+Years: .secondaryInfo
+Scores: strong
+
+
+
+### The data
+
+We will be scraping data from IMDb's website.
+First, we should make sure that we are allowed to.
+
+In your **Console**, install `{robotstxt}`.
+
+
+```{r check_imdb}
+library(robotstxt)
+paths_allowed("https://www.weforum.org/partners")
+```
+
+Compare this to, for example:
+
+```{r check_facebook}
+paths_allowed("http://www.facebook.com")
+```
+
+Are you able to scrape data from IMDb or facebook?
+
+#### Tyler Reed:
+
+IMDB: yes
+Facebook: no
+
+
+## Task 3: Prepare the data
+
+Work through the code provided below.
+Describe what each line does (e.g., run it by each line to compare what the additional line does).
+Remember that `glimpse` provides a nice summary of the data frame.
+Compare this code to the minimal CSS selectors you obtained from SelectorGadget.
+
+```{r example_scrape}
+wefp3_page <- read_html("https://www.weforum.org/partners")
+
+p3 <- wefp3_page %>% 
+  html_elements("div.js-partner-app") %>% 
+  html_text()
+
+test <- as_tibble(p3)
+
+years <- imdb_page %>% 
+  html_nodes(".secondaryInfo") %>% 
+  html_text() %>% 
+  str_replace("\\(", "") %>%
+  str_replace("\\)", "") %>%
+  as.numeric()
+
+scores <- imdb_page %>% 
+  html_nodes("#main strong") %>% 
+  html_text() %>% 
+  as.numeric()
+
+imdb_top_250 <- tibble(title = titles,
+                       year = years,
+                       score = scores
+                       )
+
+imdb_top_250 <- imdb_top_250 %>%
+  mutate(rank = row_number())
+```
+
+#### Tyler Reed:
+
+1. Read's in imdb page as a list
+2. Scraped `title` data and made an object with a list of all 250 titles.
+3. Scraped `years` data and replaced certain characters with "" and converted datatype to numeric.
+4. Scraped `scores` data and converted to numeric type.
+5. Created tibble of top 250 titles based on score and added a "rank" column.
+
+
+Depending on how messy the website's HTML is, this process may be a lot of work.
+Some examples of messy challenges include:
+
+- inconsistent formatting at the web source
+- data is broken into many pages
+
+For example, consider scraping data from CraigsList GR [apartment listings](https://grandrapids.craigslist.org/d/apts-housing-for-rent/search/apa) (this is an example of a difficult task - do not attempt to scrape these data, but do explore them with SelectorGadget).
+
+## Task 4: Data exploration
+
+Which 1995 movies made this list?
+
+``` {r 1995 titles}
+imdb_top_250 %>%
+  filter(years == 1995)
+```
+**delete this line and add your comments**
+
+
+Which years have the most movies on the top 250 list?
+
+``` {r most movies in year}
+imdb_top_250 %>%
+  group_by(year) %>%
+  count() %>%
+  arrange(desc(n))
+```
+**delete this line and add your comments**
+
+
+Visualize the average yearly score for movies that made it on the top 250 list over time.
+
+``` {r average yearly score}
+score_avg <- imdb_top_250 %>%
+  group_by(year) %>%
+  mutate(score_avg = mean(score))
+
+ggplot(score_avg) +
+  geom_line(aes(x = year, y = (score_avg))) +
+  geom_smooth(aes(x = year, y = (score_avg)), se = FALSE)
+```
+**delete this line and add your comments**
+
+
+![](README-img/noun_pause.png) **Planned Pause Point**: If you have any questions, contact your instructor. Otherwise feel free to continue on.
+
+## Task 5: TV Shows Patterns
+
+To explore functions, we will switch gears from the silver screen to the small screen.
+We will scrape the list of [most popular TV shows](http://www.imdb.com/chart/tvmeter) on IMDb, then add additional information from each TV show's subpage (e.g., genre, runtime, number of episodes).
+
+From the most popular TV shows page, find the subpages for the top three shows.
+Read these HTML pages into your RStudio session and store them into meaningful values.
+
+```{r scrape_tvshows}
+top_1 <- read_html("https://www.imdb.com/title/tt9140560/?pf_rd_m=A2FGELUUNOQJNL&pf_rd_p=332cb927-0342-42b3-815c-f9124e84021d&pf_rd_r=G8A45R7PZ2PCBB9N8N3E&pf_rd_s=center-1&pf_rd_t=15506&pf_rd_i=tvmeter&ref_=chttvm_tt_1")
+top_2 <- read_html("https://www.imdb.com/title/tt10813940/?pf_rd_m=A2FGELUUNOQJNL&pf_rd_p=332cb927-0342-42b3-815c-f9124e84021d&pf_rd_r=PY10MA481J8EF9WXASYM&pf_rd_s=center-1&pf_rd_t=15506&pf_rd_i=tvmeter&ref_=chttvm_tt_2")
+top_3 <- read_html("https://www.imdb.com/title/tt1520211/?pf_rd_m=A2FGELUUNOQJNL&pf_rd_p=332cb927-0342-42b3-815c-f9124e84021d&pf_rd_r=PY10MA481J8EF9WXASYM&pf_rd_s=center-1&pf_rd_t=15506&pf_rd_i=tvmeter&ref_=chttvm_tt_3")
+```
+
+
+Functions are a way for us to automate tasks rather than copy-and-paste.
+We can also give these functions names that make code easier to understand.
+These functions can save us time as we will only need to update code in one place, instead of many, and we eliminate the chance of making mistakes when copying and pasting (e.g., forgetting to update all variable names).
+Also, sharing functions that you write can help others (and others can improve your code).
+
+Three shows that I am currently watching are *Boardwalk Empire*, *DuckTales*, and *Shameless*.
+I stored these subpages into my R Environment as `bw_empire`, `ducktales`, and `shameless`, respectively.
+Note, you do not have these available to you (this is only an example).
+
+Now, I want to see how many episodes each of these shows has so I wrote the following code:
+
+```
+bw_empire_episode <- bw_empire %>%
+  html_nodes(".np_right_arrow .bp_sub_heading") %>%
+  html_text() %>%
+  str_replace(" episodes", "") %>%
+  as.numeric()
+
+ducktales_episode <- ducktales %>%
+  html_nodes(".np_right_arrow .bp_sub_heading") %>%
+  html_text() %>%
+  str_replace(" episodes", "") %>%
+  as.numeric()
+
+shameless_episode <- ducktales %>%
+  html_nodes(".np_right_arrow .bp_sub_heading") %>%
+  html_text() %>%
+  str_replace(" episodes", "") %>%
+  as.numeric()
+```
+
+Do you see any problems in this code?
+
+**delete this line and add your comments**
+
+
+To avoid this issue, let's write a function!
+When you look at each of these number of episodes scraping code, how many inputs do they have?
+That is, what changes from show-to-show in this example?
+
+**delete this line and add your comments**
+
+
+## Task 6: Number of episodes
+
+When I write a function, I start with an example that works:
+
+```
+ducktales %>%
+  html_nodes(".np_right_arrow .bp_sub_heading") %>%
+  html_text() %>%
+  str_replace(" episodes", "") %>%
+  as.numeric()
+```
+
+Then generalize it:
+
+```
+page <- ducktales
+
+page %>%
+  html_nodes(".np_right_arrow .bp_sub_heading") %>%
+  html_text() %>%
+  str_replace(" episodes", "") %>%
+  as.numeric()
+```
+
+Now, I can wrap this general code in a **function** and specify the **arguments**.
+However, I need an informative, descriptive name (preferably a verb).
+Remember the function naming recommendations from [R4DS::Functions](https://r4ds.had.co.nz/functions.html#functions-are-for-humans-and-computers).
+
+I will call my function `scrape_episode_number`.
+Note that this function is not actually available to you as this code chunk will not run.
+
+```
+scrape_episode_number <- function(page){
+  page %>%
+    html_nodes(".np_right_arrow .bp_sub_heading") %>%
+    html_text() %>%
+    str_replace(" episodes", "") %>%
+    as.numeric()
+}
+
+scrape_episode_number(ducktales)
+```
+
+Create your own `scrape_episode_number` function.
+Then, check this function with the top three shows you pulled into your RStudio session.
+Verify these values by looking at each show's subpage.
+
+**delete this line and add your code**
+**delete this line and add your comments**
+
+
+![](README-img/noun_pause.png) **Planned Pause Point**: If you have any questions, contact your instructor. Otherwise feel free to continue on.
+
+## Task 7: You're turn
+
+Write a function (called `scrape_show_info`) that extracts the following show information when provided with a show's subpage:
+- `title`
+- `runtime`
+- `genre`
+
+
+**delete this line and add your code**
+
+
+Test this function with the top three shows you pulled into your RStudio session.
+As a bonus, update your `scrape_show_info` function automatically read in the HTML page when passed a URL as an argument.
+
+Test this updated function on the following show (remember to remove the `eval = FALSE`):
+
+```{r}
+gb_url <- "https://www.imdb.com/title/tt0088528/"
+```
+
+**delete this line and add your code**
+
+
+You now have a function that will scrape the specified information on shows when given a show's URL!
+We will extend this function in the Activity 8.1.
+
+
+![](README-img/noun_pause.png) **Planned Pause Point**: If you have any questions, contact your instructor. Otherwise feel free to continue on.
+
+## Attribution
+
+This activity is based on one of Mine Çetinkaya-Rundel's [STA 199](http://www2.stat.duke.edu/courses/Spring18/Sta199/) labs.
