@@ -126,11 +126,11 @@ Remember that `glimpse` provides a nice summary of the data frame.
 Compare this code to the minimal CSS selectors you obtained from SelectorGadget.
 
 ```{r example_scrape}
-wefp3_page <- read_html("https://www.weforum.org/partners")
+wefp3_page <- read_html("https://www.weforum.org/partners/#3")
 
 p3 <- wefp3_page %>% 
-  html_elements("div.js-partner-app") %>% 
-  html_text()
+  html_nodes("a") %>%
+  html_text2()
 
 test <- as_tibble(p3)
 
