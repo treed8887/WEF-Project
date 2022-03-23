@@ -23,8 +23,6 @@ However, this is a course in using R...
 ## Task 2: Go go, SelectorGadget!
 
 
-![Inspector Gadget gif](https://media.giphy.com/media/z9bcWnpU1QnXG/giphy.gif)
-
 
 As we will see, most data on the web is available as HTML (hypertext markup language).
 And, although it is structured (hierarchical/tree based), HTML data is often not available in an analysis-ready format (i.e., tidy).
@@ -49,6 +47,7 @@ However, it is not loaded with the tidyverse so you will need to load it separat
 library(tidyverse)
 library(ggplot2)
 library(rvest)
+library(xmlconvert)
 ```
 
 
@@ -126,33 +125,54 @@ Remember that `glimpse` provides a nice summary of the data frame.
 Compare this code to the minimal CSS selectors you obtained from SelectorGadget.
 
 ```{r example_scrape}
-wefp3_page <- read_html("https://www.weforum.org/partners/#3")
+wefp3_page <- read_html("https://www.weforum.org/partners")
 
 p3 <- wefp3_page %>% 
-  html_nodes("a") %>%
-  html_text2()
+  html_element("div.js-partner-app")
 
-test <- as_tibble(p3)
+partners <- read_file("Partner_list") %>%
+            paste(unlist(.),collapse="")
 
-years <- imdb_page %>% 
-  html_nodes(".secondaryInfo") %>% 
-  html_text() %>% 
-  str_replace("\\(", "") %>%
-  str_replace("\\)", "") %>%
-  as.numeric()
+sp1 <- str_split(partners, "title\":\"") %>%
+         paste(unlist(.),collapse="")
 
-scores <- imdb_page %>% 
-  html_nodes("#main strong") %>% 
-  html_text() %>% 
-  as.numeric()
 
-imdb_top_250 <- tibble(title = titles,
-                       year = years,
-                       score = scores
-                       )
+temp <- vector(length = length(sp1[[1]]))
+for (i in 1:length(sp1[[1]])) {
+  temp[i] <- str_split(sp1[[1]][[i]], "\\\\")
+}
 
-imdb_top_250 <- imdb_top_250 %>%
-  mutate(rank = row_number())
+test <- str_split_fixed(temp[[455]][[1]], "\\\\", n=1)
+
+test <- vector(length = length(temp))
+for (i in 1:length(temp)) {
+  test[i] <- str_split_fixed(temp[[i]][[1]], "\\\\", n=1)[1][1]
+}
+
+
+# str_extract(sentences, "(a|the) ([^ ]+)")
+
+# test <- as_tibble(p3)
+# 
+# years <- imdb_page %>% 
+#   html_nodes(".secondaryInfo") %>% 
+#   html_text() %>% 
+#   str_replace("\\(", "") %>%
+#   str_replace("\\)", "") %>%
+#   as.numeric()
+# 
+# scores <- imdb_page %>% 
+#   html_nodes("#main strong") %>% 
+#   html_text() %>% 
+#   as.numeric()
+# 
+# imdb_top_250 <- tibble(title = titles,
+#                        year = years,
+#                        score = scores
+#                        )
+# 
+# imdb_top_250 <- imdb_top_250 %>%
+#   mutate(rank = row_number())
 ```
 
 #### Tyler Reed:
