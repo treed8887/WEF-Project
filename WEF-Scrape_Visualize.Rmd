@@ -5,7 +5,7 @@ output: github_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(error = TRUE)
+knitr::opts_chunk$set(error = TRUE, fig.height = 30)
 ```
 
 In this activity, we will explore writing your own functions by scraping data from the web.
@@ -133,21 +133,129 @@ p3 <- wefp3_page %>%
 partners <- read_file("Partner_list") %>%
             paste(unlist(.),collapse="")
 
-sp1 <- str_split(partners, "title\":\"") %>%
-         paste(unlist(.),collapse="")
+sp1 <- str_split(partners, "title\":\"") 
 
 
-temp <- vector(length = length(sp1[[1]]))
+temp <- c()
 for (i in 1:length(sp1[[1]])) {
-  temp[i] <- str_split(sp1[[1]][[i]], "\\\\")
+  temp <- c(temp, str_split(sp1[[1]][[i]], "\""))
 }
 
-test <- str_split_fixed(temp[[455]][[1]], "\\\\", n=1)
-
-test <- vector(length = length(temp))
-for (i in 1:length(temp)) {
-  test[i] <- str_split_fixed(temp[[i]][[1]], "\\\\", n=1)[1][1]
+plist <- c()
+for (i in 1:3155) {
+  plist <- c(plist, temp[[i]][[1]])
 }
+
+plist <- plist[-(1:4)]
+plist <- plist[-2]
+
+```
+
+```{r clean partner_names}
+plist <- plist %>%
+               as.vector() %>%
+               as_tibble_col() %>%
+               as_tibble() 
+
+colnames(plist)[colnames(plist) == "value"] <- "Partner_Names"
+plist$Partner_Names <- sort(plist$Partner_Names)
+
+plist <- plist %>%
+               distinct()
+
+plist$Partner_Names <- str_replace(plist$Partner_Names, "u0026", "")
+plist$Partner_Names <- str_replace(plist$Partner_Names, "\\\\", "")
+plist <- plist %>%
+               slice(-(80:83))
+```
+
+```{r country country site list}
+country <- read_file("Partner_list") %>%
+            paste(unlist(.),collapse="")
+
+c_sp1 <- str_split(country, "organizations/") 
+
+
+c_temp <- c()
+for (i in 1:length(c_sp1[[1]])) {
+  c_temp <- c(c_temp, str_split(c_sp1[[1]][[i]], "\""))
+}
+
+
+c_list <- c()
+for (i in (1:length(c_temp))) {
+  c_list <- c(c_list, c_temp[[i]][[1]])
+}
+
+c_list <- c_list[-1]
+
+```
+
+```{r clean c_list}
+c_list <- c_list %>%
+               as.vector() %>%
+               as_tibble_col() %>%
+               as_tibble() 
+
+colnames(c_list)[colnames(c_list) == "value"] <- "Country_Site_Names"
+c_list$Country_Site_Names <- sort(c_list$Country_Site_Names)
+
+c_list <- c_list %>%
+               distinct()
+
+```
+
+```{r add site to c_list}
+
+c_list <- c_list %>%
+                 mutate(Country_Site_Names = str_c("https://www.weforum.org/organizations/", 
+                                                   Country_Site_Names))
+
+
+
+```
+
+```{r scrape countries}
+# countries <- c()
+# for (i in (1:length(c_list[[1]]))) {
+#   c_page <- read_html(c_list[[1]][[i]])
+#   c <- c_page %>%
+#                    html_nodes("dd") %>%
+#                    html_text()
+#   countries <- c(countries, c)
+# }
+# 
+# c_page <- read_html(c_list[[1]][[455]])
+# c <- c_page %>%
+#                  html_nodes("dd") %>%
+#                  html_text()
+# countries <- c(countries, c)
+#   
+# countries <- countries %>%
+#                as.vector() %>%
+#                as_tibble_col() %>%
+#                as_tibble() 
+# 
+# colnames(countries)[colnames(countries) == "value"] <- "Country_Name"
+# countries$Country_Name <- sort(countries$Country_Name)
+```
+
+```{r summary of countries}
+
+countries_unique <- countries %>%
+                              unique()
+
+counts_country <- summarise(group_by(countries, Country_Name), Counts = length(Country_Name))
+
+counts_country <- counts_country %>%
+                                 summarize(Country_Name, Percent = Counts/860) %>%
+                                 arrange(desc(Percent))
+
+ggplot(countries, aes(y=Country_Name)) +
+    geom_bar()
+
+```
+
 
 
 # str_extract(sentences, "(a|the) ([^ ]+)")
