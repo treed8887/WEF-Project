@@ -8,6 +8,12 @@ output: github_document
 knitr::opts_chunk$set(error = TRUE, fig.height = 30)
 ```
 
+```{r git token, include=FALSE}
+# library(gitcreds)
+# gitcreds_set("https://github.com/treed8887/WEF-Project.git")
+# 
+# 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
+```
 In this activity, we will explore writing your own functions by scraping data from the web.
 The web is a great resource of information, especially with the ever increasing amount of data available on the web.
 Copying and pasting this information is time consuming and susceptible to many errors.
@@ -254,7 +260,37 @@ counts_country <- counts_country %>%
 ggplot(countries, aes(y=Country_Name)) +
     geom_bar()
 
+write_csv(counts_country, "Counts_Country.csv")
+
 ```
+
+```{r import country data, include=FALSE}
+
+c_UN <- as_tibble(read_csv("countries_UN.csv"))
+c_WEF <- as_tibble(read_csv("Country_WEF.csv"))
+c_all <- as_tibble(read_csv("all_world_countries.csv"))
+
+```
+
+```{r combine country data}
+WEF_UN <- c_WEF %>%
+                 inner_join(c_UN, "Country") %>%
+                 mutate("Encoding" = 25)
+
+only_UN <- c_UN %>%
+                anti_join(c_WEF, "Country") %>%
+                mutate("Encoding" = 12.5)
+
+neither <- c_all %>%
+                 anti_join(c_UN, "Country") %>%
+                 anti_join(c_WEF, "Country") %>%
+                 mutate("Encoding" = 0)
+combined <- WEF_UN %>%
+                   bind_rows(only_UN) %>%
+                   bind_rows(neither)
+
+```
+
 
 
 
